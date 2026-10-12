@@ -1,0 +1,28 @@
+.venv/
+.model-venv/
+__pycache__/
+.pytest_cache/
+*.egg-info/
+models/
+model-cache/
+build/
+dist/
+/翻译姬/
+artifacts/
+data/
+*.log
+
+/*.lnk
+
+# Local settings, credentials and editor caches.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.idea/
+.vscode/
+
+# Private local evaluation records; keep them on the development machine.
+/现场音频对比报告.md
+/验证结果.md

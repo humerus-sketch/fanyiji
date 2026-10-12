@@ -1,0 +1,48 @@
+# 第三方组件与模型
+
+本程序独立实现，未复制 Sokuji 源码。构建包含以下第三方组件；发行目录 `licenses` 保存安装包提供的许可证文件，模型许可证保存在 `models` 对应子目录。
+
+| 组件 | 官方来源 |
+| --- | --- |
+| PySide6 / Qt / shiboken6 | [Qt for Python](https://www.qt.io/qt-for-python)；本构建动态使用发行包中的 Qt DLL |
+| NumPy | [NumPy](https://github.com/numpy/numpy) |
+| sherpa-onnx / ONNX Runtime | [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)、[ONNX Runtime](https://github.com/microsoft/onnxruntime) |
+| CTranslate2 | [OpenNMT/CTranslate2](https://github.com/OpenNMT/CTranslate2) |
+| SentencePiece | [google/sentencepiece](https://github.com/google/sentencepiece) |
+| PyAudioWPatch / PortAudio | [PyAudioWPatch](https://github.com/s0d3s/PyAudioWPatch)、[PortAudio](https://github.com/PortAudio/portaudio) |
+| soxr / libsoxr | [python-soxr](https://github.com/dofuuz/python-soxr) |
+| PyInstaller 引导程序 | [PyInstaller](https://github.com/pyinstaller/pyinstaller) |
+
+## 模型
+
+- **SenseVoiceSmall ONNX INT8**：使用 [sherpa-onnx 转换资产](https://huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17)，固定 revision 为 `2365baeacb507f821a0c8120fcee3d484dba7a07`。原始 `LICENSE` 指向 [FunASR 模型授权条款](https://github.com/modelscope/FunASR/blob/main/MODEL_LICENSE)，条款副本另存 `models/asr/MODEL_LICENSE`；模型授权与推理框架授权分别保留。
+- **M2M100 418M**：来自 [Meta 模型页](https://huggingface.co/facebook/m2m100_418M)，固定 revision 为 `55c2e61bbf05dfb8d7abccdc3fae6fc8512fd636`。模型页标注 MIT；转换为 CPU INT8，保留原词表、模型卡和 `models/translation/LICENSE`。
+- **Silero VAD**：模型来自 [sherpa-onnx 官方资产](https://github.com/k2-fsa/sherpa-onnx/releases/tag/asr-models)，[Silero MIT LICENSE](https://github.com/snakers4/silero-vad/blob/master/LICENSE) 保存在 `models/vad/LICENSE`。资产以 SHA256 固定于 manifest。
+- **讲话筛选 Zipformer Small INT8**：来自 [k2-fsa 转换模型](https://huggingface.co/k2-fsa/sherpa-onnx-zipformer-small-audio-tagging-2024-04-15)，固定 revision `c24f9d0fdf7d0b8c0c4f9733aa0cac51fda10c95`；固定模型卡声明 Apache-2.0。模型与 AudioSet 类别 CSV 的大小和 SHA-256 固定于 `models_download.py`，模型卡、SOURCE 和 Apache-2.0 通用许可文本保留。分类不能当作歌声分离或测得准确率。CED 仅在开发目录评测。
+- **自测音频**：两份 WAV 来自同一 sherpa-onnx ASR 资产中的 `test_wavs/zh.wav`、`test_wavs/ja.wav`，仅用于开发和本地自测。
+
+构建的权重、资产及许可文件哈希见 `models/manifest.json`。以上来源说明用于追踪本次本地构建，不改变任何上游授权条款。
+
+## 外置翻译模型与原生推理
+
+新版程序包不包含模型权重，模型由用户通过管理窗口下载，或在其他电脑下载后复制；官方许可与权重许可各自适用。已下载翻译模型保留；生产识别仅使用 SenseVoice。
+
+- **GTCRN 语音增强**：作者 [GTCRN 仓库](https://github.com/Xiaobin-Rong/gtcrn) 的 [LICENSE](https://github.com/Xiaobin-Rong/gtcrn/blob/main/LICENSE) 声明 MIT。使用 [sherpa-onnx 语音增强发行资产](https://github.com/k2-fsa/sherpa-onnx/releases/tag/speech-enhancement-models) `gtcrn_simple.onnx`；大小 535,638 bytes，SHA256 `e77603ac0c23dac3227dd2d7135b3a585cbee2679048aecfa886657d3ae1b534`。该哈希由官方发行下载计算，非发布者签名。权重外置，不随程序包分发。
+- **可选 UVR MDXNET 9482 伴奏分离**：使用 [sherpa-onnx 官方模型文档](https://k2-fsa.github.io/sherpa/onnx/source-separation/models.html) 与 [发行资产](https://github.com/k2-fsa/sherpa-onnx/releases/tag/source-separation-models) 的 `UVR_MDXNET_9482.onnx`；大小 29,704,738 bytes，SHA256 `9d78f8566fa8198065214ab628be1de966a500c57786695aa4b13e2b27a7727d`，与发行 digest 一致。上游权重源 [TRvlvr/model_repo](https://github.com/TRvlvr/model_repo) 的顶层未提供 LICENSE；具体权重使用条款仍需向发布者核实，不能用推理框架许可代替模型许可。权重仅供用户另行获取，不随程序包分发。
+
+| 项目 | 官方来源与固定版本 |
+| --- | --- |
+| llama.cpp | [官方 b11429](https://github.com/ggml-org/llama.cpp/tree/b11429)，MIT；CPU/CUDA 原生运行库随程序提供 |
+| LLVM OpenMP | [LLVM 许可](https://github.com/llvm/llvm-project/blob/main/openmp/LICENSE.TXT)，发行 runtime 内保留许可 |
+| NVIDIA CUDA runtime / cuBLAS | [CUDA Toolkit 许可](https://docs.nvidia.com/cuda/eula/index.html)，发行 runtime 内保留来源与许可；不含 NVIDIA 显卡驱动 |
+| Hy-MT2 1.8B / 7B / 30B-A3B GGUF | [腾讯官方模型](https://huggingface.co/tencent)，各候选固定 revision 和 SHA 位于 `models_download.py`；官方仓库 Apache-2.0 |
+| Qwen3 1.7B GGUF | [Qwen 官方模型](https://huggingface.co/Qwen/Qwen3-1.7B-GGUF)，固定 revision `90862c4b9d2787eaed51d12237eafdfe7c5f6077`；Apache-2.0 |
+
+程序包 `licenses/models` 可保留模型许可文本，许可文本不是模型权重；本地下载资产与对应来源、SHA、LICENSE 另存外置模型目录。上述说明不改变上游授权条款。
+
+历史识别评测保留 [OpenAI Whisper](https://github.com/openai/whisper) 与 [Qwen3-ASR](https://github.com/QwenLM/Qwen3-ASR) 的报告、来源和适配工具，分别适用 MIT 与 Apache-2.0。它们的本地识别权重已按本次清理要求删除，不能在生产程序中下载、导入或切换。历史评测工具的固定版本和 SHA 仅用于追踪旧实验。
+# 内置浏览器依赖
+
+- **pywebview 6.2.1**：[官方源码](https://github.com/r0x0r/pywebview/tree/6.2.1)，BSD-3-Clause；Windows 使用 WinForms + WebView2 后端，保留发行包内 DLL、JS 及相应许可。
+- **pythonnet / clr-loader / cffi / proxy-tools / bottle / typing-extensions / pycparser**：Python 与 .NET 互操作和 pywebview 依赖，发行包 `licenses` 保留各安装分发的许可文本。
+- **Microsoft WebView2 SDK / Evergreen Runtime**：[官方分发说明](https://learn.microsoft.com/microsoft-edge/webview2/concepts/distribution)。SDK loader 与 .NET assemblies 随 pywebview 提供；Evergreen 浏览器 Runtime 外部安装，使用 Microsoft 许可和更新机制，不把浏览器账号资料或 Runtime 安装目录复制到程序包。
