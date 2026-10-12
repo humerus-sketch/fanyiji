@@ -67,6 +67,27 @@ def test_distribution_licenses_preserve_nested_paths_with_duplicate_names(tmp_pa
     assert (outgoing / "sample/licenses/vendor/LICENSE.txt").read_text(encoding="utf-8") == "vendor copyright"
 
 
+def test_speech_filter_notices_exclude_local_metadata_and_preserve_cache(tmp_path):
+    source = tmp_path / "cache"
+    source.mkdir()
+    notices = {"LICENSE": b"upstream license\r\n",
+               "LICENSE.txt": b"additional license\n",
+               "README.md": "# 上游模型说明\n".encode("utf-8")}
+    cached = {**notices,
+              "SOURCE.json": json.dumps({"model_path": "C:/Users/private/model.onnx",
+                                         "evaluation": "private-local-results"}).encode("utf-8"),
+              "model.int8.onnx": b"synthetic weights"}
+    for name, content in cached.items():
+        (source / name).write_bytes(content)
+    destination = tmp_path / "package/licenses/models/speech-filter-zipformer"
+
+    builder._copy_speech_filter_notices(source, destination)
+
+    assert {path.name: path.read_bytes() for path in destination.iterdir()} == notices
+    assert not (destination / "SOURCE.json").exists()
+    assert {path.name: path.read_bytes() for path in source.iterdir()} == cached
+
+
 def test_supplemental_licenses_copy_manifest_and_required_files(tmp_path):
     source = tmp_path / "source"
     (source / "Qt").mkdir(parents=True)

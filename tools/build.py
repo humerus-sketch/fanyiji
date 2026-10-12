@@ -58,6 +58,15 @@ def _copy_distribution_licenses(distribution, package: str, destination: Path) -
             shutil.copy2(source, target)
 
 
+def _copy_speech_filter_notices(source: Path, destination: Path) -> None:
+    """Only upstream notices are public; local evaluation SOURCE metadata is not."""
+    for name in ("LICENSE", "LICENSE.txt", "README.md"):
+        notice = source / name
+        if notice.is_file():
+            destination.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(notice, destination / name)
+
+
 def _copy_supplemental_licenses(source: Path, destination: Path) -> None:
     manifest = source / "MANIFEST.json"
     try:
@@ -148,12 +157,7 @@ def main() -> int:
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(folder / "LICENSE.txt", target)
     speech_filter = ROOT / "model-cache/speech-filter/zipformer-small-int8"
-    for name in ("LICENSE", "LICENSE.txt", "SOURCE.json", "README.md"):
-        source = speech_filter / name
-        if source.is_file():
-            target = model_notices / "speech-filter-zipformer" / name
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source, target)
+    _copy_speech_filter_notices(speech_filter, model_notices / "speech-filter-zipformer")
     import importlib.metadata
     for package in ("PySide6-Essentials", "shiboken6", "numpy", "sherpa-onnx", "sherpa-onnx-core",
                     "ctranslate2", "sentencepiece", "PyAudioWPatch", "soxr", "pywebview", "pythonnet",
