@@ -1,6 +1,6 @@
 # 第三方组件与模型
 
-本程序独立实现，未复制 Sokuji 源码。构建包含以下第三方组件；发行目录 `licenses` 保存安装包提供的许可证文件，模型许可证保存在 `models` 对应子目录。
+本程序独立实现，未复制 Sokuji 源码。构建包含以下第三方组件；发行目录 `licenses` 保存安装包提供的许可证文件，模型许可证保存在 `models` 对应子目录。安装包缺失的许可文本另保存在源码 `third_party_licenses`，构建复制到 `licenses/supplemental`；其 `MANIFEST.json` 记录固定官方来源、对应版本与 SHA-256，不包含本机路径或用户资料。
 
 | 组件 | 官方来源 |
 | --- | --- |
@@ -12,6 +12,17 @@
 | PyAudioWPatch / PortAudio | [PyAudioWPatch](https://github.com/s0d3s/PyAudioWPatch)、[PortAudio](https://github.com/PortAudio/portaudio) |
 | soxr / libsoxr | [python-soxr](https://github.com/dofuuz/python-soxr) |
 | PyInstaller 引导程序 | [PyInstaller](https://github.com/pyinstaller/pyinstaller) |
+
+### 程序运行库补充许可
+
+- **PySide6-Essentials / shiboken6 / Qt 6.12.0**：安装包声明 `LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only`。从同版本官方源码补齐 LGPL、GPL 和 Qt exception 文本，动态运行库保持独立文件。对应源代码和官方授权说明见补充目录的 `Qt/NOTICE.txt`。商业许可引用文件本身不授予商业许可。
+- **CTranslate2 4.8.2 / SentencePiece 0.2.2**：分别保留固定版本官方 MIT / Apache-2.0 文本；SentencePiece 内置第三方许可一并保留。
+- **ONNX Runtime 1.28.2**：版本来自所分发 DLL 的版本资源；保留同版本官方 MIT 及 `ThirdPartyNotices.txt`。
+- **PortAudio**：运行库报告 `V19.7.0-devel, revision unknown`；保留本程序使用的 PyAudioWPatch `v0.2.12.9` 源码中 `portaudio_v19/LICENSE.txt`，不把未知 revision 写成已确认的 PortAudio tag。
+- **proxy-tools 0.1.0**：安装 metadata 和官方 `setup.py` 声明 MIT，但官方固定 commit 的 `LICENSE.txt` 实际含 BSD 条文；原文完整保留，未擅自将其改写成 MIT。该来源差异记录在补充目录的 manifest 中。
+- **Intel OpenMP / NVIDIA cuDNN**：CTranslate2 还分发独立原生 DLL。Intel OpenMP build `5.0.20250910` 与官方 `intel-openmp 2025.3.0` wheel 内 DLL 的 SHA-256 相同，保留该 wheel 的 Intel Developer Tools EULA 原文及 UTF-8 阅读副本；cuDNN `9.10.2.21` 保留 NVIDIA 固定 `v9.10.2` 文档中的 EULA、cuDNN Supplement 与第三方 acknowledgements 的 HTML 原文和阅读文本。它们适用各自条款，不能以 CTranslate2 MIT 或 LLVM OpenMP 许可代替。
+
+这些文件用于保留已识别运行库的上游授权与归属信息，不构成法律合规保证；模型权重许可与程序运行库许可分别适用。
 
 ## 模型
 

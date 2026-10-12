@@ -1,0 +1,26 @@
+Qt for Python and Qt runtime notices
+
+PySide6-Essentials and shiboken6 version: 6.12.0
+Copyright (C) 2022 The Qt Company Ltd.
+The installed distributions declare LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only.
+The license texts in this directory are unchanged copies from the matching
+upstream v6.12.0 source. Commercial license-reference files from the installed
+wheel do not grant a commercial Qt license to recipients.
+
+Upstream source (matching version):
+https://github.com/pyside/pyside-setup/tree/v6.12.0
+https://github.com/qt/qtbase/tree/v6.12.0
+https://github.com/qt/qtsvg/tree/v6.12.0
+https://github.com/qt/qtimageformats/tree/v6.12.0
+
+The application uses Qt shared libraries provided by the installed wheel.
+Qt and PySide source code has not been modified by this application. The DLLs
+and bindings remain in the portable package's _internal directory; retain
+their dependency-compatible file names when replacing them.
+
+Official licensing and third-party attribution information:
+https://doc.qt.io/qt-6/licensing.html
+https://doc.qt.io/qt-6/licenses-used-in-qt.html
+
+This notice records the identified distribution and sources. It is not a
+legal compliance guarantee or a replacement for the upstream license terms.

@@ -1,0 +1,2 @@
+# Preserve the exact upstream license bytes recorded in MANIFEST.json.
+third_party_licenses/** -text

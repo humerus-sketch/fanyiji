@@ -1,0 +1,23 @@
+{
+  "component": "Intel OpenMP runtime",
+  "version": "5.0.20250910",
+  "package_version": "2025.3.0",
+  "source": "https://pypi.org/project/intel-openmp/2025.3.0/",
+  "official_homepage": "https://www.intel.com/content/www/us/en/developer/tools/oneapi/dpc-compiler.html",
+  "package_url": "https://files.pythonhosted.org/packages/79/69/05addedd727061b61a85b4fd989754edb628b5be1cd5d161727f98cf4d86/intel_openmp-2025.3.0-py2.py3-none-win_amd64.whl",
+  "package_size": 32083814,
+  "package_sha256": "8ff899d01a41b92ffe0e618b221ea633127d16df726086082d381c431c31339d",
+  "license": "Intel End User License Agreement for Developer Tools (license text from matching published wheel)",
+  "license_member": "intel_openmp-2025.3.0.dist-info/LICENSE.txt",
+  "license_sha256": "febfb69a5b058f55892dc7f341108a9ca29d50e9fe85723a57eebbb826436958",
+  "dll_sha256": "982233366b0afcda1e0f55a0b134097e35b779613f54ddb69e685e6cd06b755f",
+  "dll_matches_packaged_runtime": true,
+  "retrieved_at": "2026-10-12T18:10:44+08:00",
+  "modified": false,
+  "original_license_file": "LICENSE.original.txt",
+  "original_license_encoding": "Windows-1252",
+  "readable_license_file": "LICENSE.txt",
+  "readable_license_encoding": "UTF-8",
+  "readable_license_sha256": "28529142173be36cca1a01051e54c5b51a699e339d9cad2238ffbf77b79ec93e",
+  "text_transcoding_only": true
+}
