@@ -1,0 +1,76 @@
+name: Reassemble verified local voice package
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: voice-reassembly-v0.1.3
+  cancel-in-progress: false
+jobs:
+  reassemble:
+    if: github.repository == 'humerus-sketch/fanyiji' && github.event.repository.private == false
+    runs-on: windows-2025
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 0832243e5de8d6bd1de938a27fd5ed0705371bc4
+          persist-credentials: false
+          fetch-depth: 1
+          submodules: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12.10'
+      - name: Verify source commit and draft, download exact payload
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ((git rev-parse HEAD) -ne '0832243e5de8d6bd1de938a27fd5ed0705371bc4') { throw 'Wrong source commit' }
+          if ($env:GITHUB_REPOSITORY -ne 'humerus-sketch/fanyiji') { throw 'Wrong repository' }
+          $release = gh api repos/humerus-sketch/fanyiji/releases/413106610 | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0 -or !$release.draft -or $release.tag_name -cne 'v0.1.3' -or $release.target_commitish -cne '0832243e5de8d6bd1de938a27fd5ed0705371bc4') { throw 'Release must remain a draft' }
+          New-Item -ItemType Directory -Path payload -ErrorAction Stop | Out-Null
+          gh release download v0.1.3 --repo humerus-sketch/fanyiji --dir payload --pattern 'FanyiJiVoice-v0.1.3-local-base.zip' --pattern 'reassembly-manifest.json' --pattern 'reassemble.py'
+          if ($LASTEXITCODE -ne 0) { throw 'Payload download failed' }
+          # Fixed locally measured hashes; do not trust a hash supplied by the downloaded manifest.
+          if ((Get-FileHash -LiteralPath payload/reassemble.py -Algorithm SHA256).Hash.ToLowerInvariant() -ne 'd05ad67181696849df9997cfa7ae5a46cb8a376afe0c95edd1d0fdcce92aa4b0') { throw 'Reassembly script hash mismatch' }
+          if ((Get-FileHash -LiteralPath payload/reassembly-manifest.json -Algorithm SHA256).Hash.ToLowerInvariant() -ne '0f7d659d5eff2ee20bd38282c5d6133fc3f204dfe73ffe50fceb257a7c82a0b7') { throw 'Manifest hash mismatch' }
+      - name: Restore fixed runtime files and verify every final file
+        shell: pwsh
+        run: |
+          python payload/reassemble.py --manifest payload/reassembly-manifest.json --base payload/FanyiJiVoice-v0.1.3-local-base.zip --archives runtime-downloads --fetch --output 'projects/fanyiji-voice/dist/翻译姬·语音版'
+          if ($LASTEXITCODE -ne 0) { throw 'Exact reassembly failed' }
+          # Exact file SHA equivalence retains the already passed local GUI test evidence.
+          # This job does not claim a new interactive live-stream or GPU inference test.
+      - name: Package exact source and verified program
+        shell: pwsh
+        run: |
+          python projects/fanyiji-voice/tools/package_release.py --output-dir release-assets
+          if ($LASTEXITCODE -ne 0) { throw 'Packaging failed' }
+          if ((git rev-parse HEAD) -ne '0832243e5de8d6bd1de938a27fd5ed0705371bc4') { throw 'Source commit changed' }
+      - name: Upload final archives to draft only
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $release = gh api repos/humerus-sketch/fanyiji/releases/413106610 | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0 -or !$release.draft -or $release.tag_name -cne 'v0.1.3' -or $release.target_commitish -cne '0832243e5de8d6bd1de938a27fd5ed0705371bc4') { throw 'Refusing to mutate published release' }
+          $names = @('FanyiJiVoice-v0.1.3-windows-x64.zip', 'FanyiJiVoice-v0.1.3-source.zip', 'FanyiJiVoice-SHA256SUMS.txt', 'FanyiJiVoice-release-manifest.json')
+          if (@($release.assets | Where-Object { $_.name -cin $names }).Count) { throw 'Final assets already exist; no replacement is allowed' }
+          $manifest = Get-Content -LiteralPath release-assets/FanyiJiVoice-release-manifest.json -Raw | ConvertFrom-Json
+          if ($manifest.source_commit -cne '0832243e5de8d6bd1de938a27fd5ed0705371bc4' -or $manifest.models_bundled -or $manifest.private_data_bundled) { throw 'Final provenance differs' }
+          gh release upload v0.1.3 --repo humerus-sketch/fanyiji release-assets/FanyiJiVoice-v0.1.3-windows-x64.zip release-assets/FanyiJiVoice-v0.1.3-source.zip release-assets/FanyiJiVoice-SHA256SUMS.txt release-assets/FanyiJiVoice-release-manifest.json
+          if ($LASTEXITCODE -ne 0) { throw 'Draft upload failed' }
+          $updated = gh api repos/humerus-sketch/fanyiji/releases/413106610 | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0 -or !$updated.draft -or $updated.target_commitish -cne '0832243e5de8d6bd1de938a27fd5ed0705371bc4') { throw 'Draft changed during upload' }
+          foreach ($name in $names) {
+            $path = Join-Path release-assets $name
+            $file = Get-Item -LiteralPath $path
+            $asset = @($updated.assets | Where-Object { $_.name -ceq $name })
+            $hash = 'sha256:' + (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($asset.Count -ne 1 -or $asset[0].state -ne 'uploaded' -or $asset[0].size -ne $file.Length -or $asset[0].digest -cne $hash) { throw ('Server hash differs: ' + $name) }
+          }
+          Get-Content -LiteralPath release-assets/FanyiJiVoice-release-manifest.json -Raw | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
