@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fanyiji-voice"
+version = "0.1.1"
+description = "翻译姬：本地语音识别与中日双语字幕翻译工具"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "PySide6-Essentials==6.12.0",
+  "shiboken6==6.12.0",
+  "numpy==2.5.3",
+  "sherpa-onnx==1.13.8",
+  "ctranslate2==4.8.2",
+  "sentencepiece==0.2.2",
+  "PyAudioWPatch==0.2.12.9",
+  "soxr==1.1.0",
+  "websocket-client==1.9.2",
+  "pywebview==6.2.1; sys_platform == 'win32'",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==9.1.1", "pyinstaller==6.22.3"]
+
+[project.scripts]
+fanyiji-voice = "fanyiji.app:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

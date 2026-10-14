@@ -8,6 +8,8 @@ model-cache/
 build/
 dist/
 /翻译姬/
+/翻译姬·语音版/
+/翻译姬·Chrome字幕版/
 artifacts/
 data/
 *.log

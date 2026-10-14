@@ -1,0 +1,29 @@
+{
+  "component": "NVIDIA cuDNN runtime",
+  "version": "9.10.2.21",
+  "documentation_revision": "v9.10.2",
+  "license": "NVIDIA Software Development Kits License Agreement and cuDNN Supplement (February 22, 2022)",
+  "dll_sha256": "9edbcdff73b0af070eb160b2ce66e59feca04aa017351d8eedcc5e8e149967d2",
+  "pages": [
+    {
+      "name": "LICENSE",
+      "source": "https://docs.nvidia.com/deeplearning/cudnn/backend/v9.10.2/reference/eula.html",
+      "html_sha256": "f3763a5ae20aa135e6f0186ac64c22f61c049e5ef5b81122ea06dd4b9ce58707",
+      "html_size": 43905,
+      "text_sha256": "19b6fef990ec56a5daaf38265850fdf6388e70c1dbd5fbb7680716f080836f01",
+      "text_size": 18355,
+      "text_extraction": "Full bd-article content, HTML tags/navigation header anchors removed; all license provisions retained"
+    },
+    {
+      "name": "ACKNOWLEDGEMENTS",
+      "source": "https://docs.nvidia.com/deeplearning/cudnn/backend/v9.10.2/reference/acknowledgements.html",
+      "html_sha256": "d4b3467042cd70e1a19d9118753a930c04b93536b6742413071b5a2268e20674",
+      "html_size": 28962,
+      "text_sha256": "6440aa22e5fb733947ebbaa8c50e4cf21e22f96b0949e43bcc02aba89c5876c8",
+      "text_size": 7245,
+      "text_extraction": "Full bd-article content, HTML tags/navigation header anchors removed; all license provisions retained"
+    }
+  ],
+  "retrieved_at": "2026-10-12T18:10:44+08:00",
+  "original_html_unmodified": true
+}
