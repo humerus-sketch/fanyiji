@@ -314,14 +314,14 @@ def test_unknown_send_is_retained_and_explicit_button_only_requests_verification
     assert service.resumed == 2
 
 
-def test_unavailable_distribution_build_keeps_browser_but_hides_push(qt_app):
+def test_unavailable_service_keeps_browser_but_hides_push(qt_app):
     service = BrowserStub()
     service.danmaku_available = False
     dialog = make_dialog(service)
     assert dialog.push_controls.isHidden()
     assert not dialog.push_controls.isEnabled()
     assert not dialog.danmaku_access_note.isHidden()
-    assert "分发版不开放" in dialog.danmaku_access_note.text()
+    assert "当前不可用" in dialog.danmaku_access_note.text()
     assert dialog.save_danmaku_preferences() is False
     service.danmaku_status.emit({"clearable": 3})
     assert not dialog.clear_button.isEnabled()
@@ -339,6 +339,24 @@ def test_push_controls_follow_interface_language(qt_app, language, label):
     assert label in dialog.danmaku_enabled.text()
     assert "电脑声音" not in dialog.danmaku_source.itemText(0)
     assert "待发" not in dialog.danmaku_status.text()
+
+
+@pytest.mark.parametrize("language", ["zh-CN", "ja", "en"])
+def test_public_push_controls_are_visible_and_opt_in_in_all_languages(qt_app, language):
+    set_language(language)
+    service = BrowserStub()
+    dialog = make_dialog(service)
+    assert not dialog.push_controls.isHidden()
+    assert dialog.push_controls.isEnabled()
+    assert dialog.danmaku_access_note.isHidden()
+    assert not dialog.danmaku_enabled.isChecked()
+    assert not dialog.repair_button.isChecked()
+    assert dialog.danmaku_interval.minimum() == 3.5
+    labels = " ".join(label.text() for label in dialog.findChildren(QLabel))
+    for obsolete in ("仅本机管理员", "分发版不开放", "この PC の管理者のみ", "local administrator only"):
+        assert obsolete not in labels
+    assert service.saved == []
+    assert service.opened == []
 
 
 @pytest.mark.parametrize("language,title", [("zh-CN", "清空待发队列"),

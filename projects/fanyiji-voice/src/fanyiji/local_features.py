@@ -1,4 +1,4 @@
-"""Host-local feature grants stay outside distributable application packages."""
+"""Public feature availability and compatibility with legacy local installers."""
 from __future__ import annotations
 
 import hashlib
@@ -15,18 +15,12 @@ def _host_key() -> str:
 
 
 def danmaku_available() -> bool:
-    if not getattr(sys, "frozen", False):
-        return True
-    try:
-        value = json.loads((data_root() / "local-features.json").read_text(encoding="utf-8"))
-        return (isinstance(value, dict) and value.get("schema_version") == 1
-                and value.get("host") == _host_key() and value.get("danmaku") is True)
-    except (OSError, ValueError, UnicodeError):
-        return False
+    """All editions include sending; preferences and browser login control its use."""
+    return True
 
 
 def enable_local_danmaku() -> None:
-    """Only the explicit local installer grants this machine the feature."""
+    """Keep old installer calls compatible; this file no longer gates the feature."""
     path = data_root() / "local-features.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     value = {"schema_version": 1, "host": _host_key(), "danmaku": True}

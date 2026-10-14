@@ -92,11 +92,16 @@ def main():
     shutil.copy2(ROOT / "THIRD_PARTY_NOTICES.md", destination / "THIRD_PARTY_NOTICES.md")
     import importlib.metadata
     licenses = destination / "licenses"
-    packages = ("PySide6-Essentials", "shiboken6", "numpy", "sherpa-onnx", "sherpa-onnx-core", "websocket-client")
+    packages = ("PySide6-Essentials", "shiboken6", "numpy", "sherpa-onnx", "sherpa-onnx-core", "websocket-client", "pyinstaller")
     if EDITION == "voice":
         packages += ("ctranslate2", "sentencepiece", "PyAudioWPatch", "soxr", "pywebview", "pythonnet", "clr-loader", "cffi", "proxy-tools", "bottle", "typing-extensions", "pycparser")
     for package in packages:
         _copy_distribution_licenses(importlib.metadata.distribution(package), package, licenses)
+    python_license = Path(sys.base_prefix) / "LICENSE.txt"
+    if not python_license.is_file():
+        raise RuntimeError("缺少所用 Python 运行时许可证")
+    (licenses / "Python").mkdir(exist_ok=True)
+    shutil.copy2(python_license, licenses / "Python/LICENSE.txt")
     _copy_supplemental_licenses(ROOT / "third_party_licenses", licenses / "supplemental")
     (destination / "build-info.json").write_text(json.dumps({"application": APP_ID, "display_name": APP_NAME,
         "edition": EDITION, "schema_version": 1, "models_bundled": False,

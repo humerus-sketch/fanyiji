@@ -1,16 +1,16 @@
 # 翻译姬
 
-## 当前发布：翻译姬·语音版 0.1.1
+## 当前发布：翻译姬·语音版 0.1.2
 
-- [Windows x64 完整程序包](https://github.com/humerus-sketch/fanyiji/releases/download/v0.1.1/FanyiJiVoice-v0.1.1-windows-x64.zip)：约 780 MiB，包含 CPU / NVIDIA GPU 运行库，无需安装 Python。
-- [独立语音版源码 ZIP](https://github.com/humerus-sketch/fanyiji/releases/download/v0.1.1/FanyiJiVoice-v0.1.1-source.zip)。
-- [Release 与更新说明](https://github.com/humerus-sketch/fanyiji/releases/tag/v0.1.1)。
+- [Windows x64 完整程序包](https://github.com/humerus-sketch/fanyiji/releases/download/v0.1.2/FanyiJiVoice-v0.1.2-windows-x64.zip)：约 780 MiB，包含 CPU / NVIDIA GPU 运行库，无需安装 Python。
+- [独立语音版源码 ZIP](https://github.com/humerus-sketch/fanyiji/releases/download/v0.1.2/FanyiJiVoice-v0.1.2-source.zip)。
+- [Release 与更新说明](https://github.com/humerus-sketch/fanyiji/releases/tag/v0.1.2)。
 - [语音版源码与完整使用说明](projects/fanyiji-voice/README.md)。
 
 完整解压程序包，双击 `翻译姬·语音版.exe`；保留 `_internal`、`runtime` 和其他随包文件，不能只复制 EXE。
-程序不包含模型、账号、个人配置或本机管理员授权。首次使用在“模型管理”下载所需模型；离线翻译须选择“本地翻译”。
+程序不包含模型、账号或个人配置。弹幕推送对普通用户开放，首次默认关闭；请自行登录直播账号，配置直播间后手动开启。首次使用在“模型管理”下载所需模型；离线翻译须选择“本地翻译”。
 
-本版修复翻译模型下载链路：已核验的官方国内源优先、备用源、断点续传、有界重试、完整性校验及具体错误提示。
+0.1.2 取消弹幕推送的本机管理员限制，仍保留登录、发送间隔、内容处理、队列与投递核验。翻译模型下载继续支持已核验的官方国内源优先、备用源、断点续传、有界重试、完整性校验及具体错误提示。
 手动下载完整 `.gguf` 后，在“模型管理”顶部点击“导入本地模型”，命名并导入；选择本地或混合翻译，再点击“使用选中模型”。GGUF 无需解压，导入需要目标磁盘额外保存一份模型。
 
 当前源码运行及打包入口为 `projects/fanyiji-voice`，使用 Python 3.12 和该项目自己的虚拟环境。语音版不再提供 Chrome 原生字幕模式。
@@ -18,7 +18,7 @@ Chrome 字幕版在[独立仓库 fanyiji-chrome](https://github.com/humerus-sket
 
 ## 拆分前版本说明（v0.1.0）
 
-下方及根目录原源码保留供旧版本追溯；开发语音版 0.1.1 请使用上方独立项目，勿使用根目录旧入口。
+下方及根目录原源码保留供旧版本追溯；开发当前语音版请使用上方独立项目，勿使用根目录旧入口。
 
 翻译姬（内部标识 `FanyiJi`，Python 包与命令行入口 `fanyiji`）是 Windows 实时语音翻译字幕工具。采集麦克风和电脑播放声音，分别生成中日互译字幕。支持本地模型离线翻译、Codex CLI 订阅翻译、本地暂译与云端 CLI 终稿并行、国内 CLI 账号翻译，以及内置 Google / 有道网页翻译。程序包不包含模型权重；本地模式下载完成后可以断网使用，无需登录、API Key 或安装 Python。
 

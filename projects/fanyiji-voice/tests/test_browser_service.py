@@ -45,6 +45,59 @@ def test_creating_service_does_not_open_browser_or_check_network(service):
     assert not service.profile.exists()
 
 
+def test_public_frozen_service_is_available_but_requires_explicit_sender_settings(app, tmp_path, monkeypatch):
+    from fanyiji import local_features
+    monkeypatch.setattr(local_features.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(local_features, "data_root", lambda: tmp_path)
+    with patch("fanyiji.browser_service.data_root", return_value=tmp_path), \
+            patch.object(BrowserService, "open") as open_browser, \
+            patch.object(BrowserService, "_send") as send:
+        public = BrowserService()
+        try:
+            assert public.danmaku_available is True
+            assert public.danmaku_enabled is False
+            assert public.danmaku_repair_enabled is False
+            assert public.danmaku_interval_seconds == 3.5
+            assert not public.preferences_path.exists()
+            assert not (tmp_path / "local-features.json").exists()
+            public.save_preferences("1698225", False, danmaku_enabled=True)
+            assert public.danmaku_enabled is True
+            assert json.loads(public.preferences_path.read_text())["danmaku_enabled"] is True
+            assert public.process.state() == QProcess.ProcessState.NotRunning
+            assert not public.profile.exists()
+            open_browser.assert_not_called()
+            send.assert_not_called()
+        finally:
+            public.close()
+
+
+def test_public_frozen_service_restores_saved_options_without_local_grant_or_browser_open(app, tmp_path, monkeypatch):
+    from fanyiji import local_features
+    monkeypatch.setattr(local_features.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(local_features, "data_root", lambda: tmp_path)
+    preferences = tmp_path / "browser-preferences.json"
+    preferences.write_text(json.dumps({"room": "21399689", "auto_check": False,
+        "danmaku_enabled": True, "danmaku_repair_enabled": True,
+        "danmaku_interval_seconds": 1, "danmaku_validation_room": "1698225"}), encoding="utf-8")
+    original = preferences.read_bytes()
+    with patch("fanyiji.browser_service.data_root", return_value=tmp_path), \
+            patch.object(BrowserService, "open") as open_browser:
+        public = BrowserService()
+        try:
+            assert public.danmaku_available is True
+            assert public.danmaku_enabled is True
+            assert public.danmaku_repair_enabled is True
+            assert public.danmaku_interval_seconds == 3.5
+            assert public.danmaku_validation_room == "1698225"
+            assert preferences.read_bytes() == original
+            assert public.process.state() == QProcess.ProcessState.NotRunning
+            assert not public.profile.exists()
+            assert not (tmp_path / "local-features.json").exists()
+            open_browser.assert_not_called()
+        finally:
+            public.close()
+
+
 @pytest.mark.parametrize("available,closed,expected", [
     (True, False, 1), (False, False, 0), (True, True, 0)])
 def test_clear_queue_request_is_local_and_requires_available_live_service(service, available, closed, expected):
@@ -726,7 +779,7 @@ def test_invalid_loaded_validation_room_does_not_disable_other_saved_settings(se
         second.close()
 
 
-def test_distribution_cannot_enable_sender(service):
+def test_unavailable_service_cannot_enable_sender(service):
     service.danmaku_available = False
     with pytest.raises(ValueError):
         service.save_preferences("1698225", False, danmaku_enabled=True)
@@ -791,7 +844,7 @@ def test_repair_setter_rejects_non_boolean_without_changing_settings(service, in
     assert service.danmaku_repair_enabled is False
 
 
-def test_public_build_cannot_enable_or_restore_saved_repair_switch(service):
+def test_unavailable_service_cannot_enable_or_restore_saved_repair_switch(service):
     service.preferences_path.write_text(json.dumps({"room": "21399689",
         "danmaku_repair_enabled": True, "danmaku_enabled": True}), encoding="utf-8")
     with patch("fanyiji.browser_service.data_root", return_value=service.preferences_path.parent), \

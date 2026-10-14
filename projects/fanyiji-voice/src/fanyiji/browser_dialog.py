@@ -136,7 +136,7 @@ class BrowserDialog(QDialog):
         self.push_controls.setVisible(available)
         self.push_controls.setEnabled(available)
         layout.addWidget(self.push_controls)
-        self.danmaku_access_note = QLabel(tr("弹幕推送仅本机启用，分发版不开放"))
+        self.danmaku_access_note = QLabel(tr("弹幕推送当前不可用"))
         self.danmaku_access_note.setVisible(not available)
         self.danmaku_access_note.setWordWrap(True)
         layout.addWidget(self.danmaku_access_note)

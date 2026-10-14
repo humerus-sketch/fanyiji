@@ -668,9 +668,9 @@ _MESSAGES: dict[str, tuple[str, str]] = {
         "未確定メッセージをページで受信したか読み取り専用で確認します。再送しません。",
         "Check whether the page received the pending message without resending it."),
     "弹幕推送未开启": ("コメント送信は無効です", "Chat sending is disabled"),
-    "弹幕推送仅本机启用，分发版不开放": (
-        "コメント送信はこの PC のみで利用でき、配布版では提供されません",
-        "Chat sending is available on this PC only; distribution builds do not include access"),
+    "弹幕推送当前不可用": (
+        "コメント送信は現在利用できません",
+        "Chat sending is currently unavailable"),
     "保存后生效。开启时自动连接已登录的内置直播页；只发送终稿，每段【译文】含括号最多 40 字符。正文去标点，断句用空格，保留外层【】。10 秒内重复内容跳过，发送间隔至少 3.5 秒。队列不过期；返回 f 后按发送间隔自动重试当前条，保留顺序；其他平台拒绝或结果未知时保留消息等待核实。": (
         "保存後に適用します。有効にするとログイン済みの内蔵配信ページに自動接続します。確定訳のみ送信し、各【翻訳】は括弧込みで最大 40 文字です。本文の句読点を除き、文の区切りは空白にして外側の【】を保持します。10 秒以内の重複を除外し、送信間隔は 3.5 秒以上です。待機メッセージは期限切れになりません。f 応答の場合は送信間隔に従って現在のコメントを自動再送し、順序を保持します。その他の拒否や結果不明の場合は確認のため保持します。",
         "Save to apply. When enabled, connect automatically to the signed-in built-in live page. Send finals only, up to 40 characters including brackets per segment. Remove body punctuation, separate sentences with spaces and retain the outer 【】. Skip duplicates within 10 seconds and wait at least 3.5 seconds between sends. Queued messages do not expire. After f, retry the current message automatically at the send interval, preserving queue order. Other rejections or unknown results are retained for review."),
@@ -1609,9 +1609,9 @@ _MESSAGES.update({
     "隐藏和恢复仅用于翻译姬打开的专用 Chrome；现有 Chrome 只读连接不能隐藏字幕或推送弹幕。恢复优先刷新专用直播页，不会自动打开 Chrome 设置。": (
         "非表示と復旧は翻译姬が開いた専用 Chrome に限ります。既存 Chrome の読み取り専用接続では字幕を非表示にしたり配信コメントを送信したりできません。復旧ではまず専用の配信ページを再読み込みし、Chrome 設定は自動で開きません。",
         "Hide and recovery apply only to dedicated Chrome opened by 翻译姬. Read-only connection to existing Chrome cannot hide captions or send live chat. Recovery first refreshes the dedicated live page and does not open Chrome settings automatically."),
-    "同步稳定的新中文字幕到直播弹幕（仅本机管理员）": (
-        "安定した新しい中国語字幕を配信コメントに同期（この PC の管理者のみ）",
-        "Send stable new Chinese captions to live chat (local administrator only)"),
+    "同步稳定的新中文字幕到直播弹幕": (
+        "安定した新しい中国語字幕を配信コメントに同期",
+        "Send stable new Chinese captions to live chat"),
     "发送目标直播间": ("送信先の配信ルーム", "Target live room"),
     "保存弹幕设置": ("配信コメント設定を保存", "Save live-chat settings"),
     "仅发送专用 Chrome 中稳定的新中文字幕；首次历史字幕不发送，发送正文仍须严格中文。发送间隔至少 3.5 秒。保存设置不会自动打开直播间或提交弹幕。": (

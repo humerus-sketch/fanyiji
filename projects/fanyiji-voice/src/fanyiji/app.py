@@ -771,6 +771,10 @@ def smoke_test(screenshot: Path | None = None, language: str = "zh-CN", processi
     window.set_translation("system", "请先把资料发过来。", "preview-system")
     window.show()
     app.processEvents()
+    from .local_features import danmaku_available
+    public_features = {"danmaku_available": danmaku_available(),
+                       "danmaku_controls_visible": window.browser_button.isVisible()
+                           and window.browser_button.isEnabled()}
     if screenshot:
         screenshot.parent.mkdir(parents=True, exist_ok=True)
         window.grab().save(str(screenshot))
@@ -779,7 +783,8 @@ def smoke_test(screenshot: Path | None = None, language: str = "zh-CN", processi
         dialog.grab().save(str(screenshot.with_name("first-run.png")))
     dialog.close()
     window.close()
-    print(json.dumps({"ui_smoke": "passed", "audio_capture": False, "settings_written": False}))
+    print(json.dumps({"ui_smoke": "passed", "audio_capture": False, "settings_written": False,
+                      **public_features}))
     return 0
 
 
