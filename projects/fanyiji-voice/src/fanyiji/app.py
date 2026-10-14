@@ -664,13 +664,16 @@ class AppController(QObject):
             return
         self.closed, self.epoch = True, self.epoch + 1
         self.diagnostic_timer.stop()
-        if self.danmaku is not None:
-            self.danmaku.close()
-        if self.browser_service is not None:
-            self.browser_service.close()
-        self.live_source_service.close()
-        if self.specialized is not None:
-            self.specialized.cancel_comparison()
+        for label, service, operation in (
+                ("danmaku", self.danmaku, "close"),
+                ("browser", self.browser_service, "close"),
+                ("live_source", self.live_source_service, "close"),
+                ("specialized_model", self.specialized, "cancel_comparison")):
+            if service is not None:
+                try:
+                    getattr(service, operation)()
+                except Exception as exc:
+                    logging.warning("Application cleanup failed: service=%s error=%s", label, type(exc).__name__)
         self.executor.submit(self._shutdown_current_pipeline)
         self.executor.shutdown(wait=False, cancel_futures=False)
 

@@ -81,6 +81,7 @@ class RecognizerEngine:
         self.num_threads = num_threads
         self._recognizers: dict[str, Any] = {}
         self._lock = threading.RLock()
+        self._closed = False
         _require_files(self.model_dir, ("model.int8.onnx", "tokens.txt"))
 
     @property
@@ -91,6 +92,8 @@ class RecognizerEngine:
 
     def _recognizer(self, language: str) -> Any:
         language = validate_asr_language(language)
+        if self._closed:
+            raise RuntimeError("本地识别引擎已关闭")
         if language not in self._recognizers:
             model = getattr(self, "_sensevoice_model", self.model_dir / "model.int8.onnx")
             tokens = getattr(self, "_sensevoice_tokens", self.model_dir / "tokens.txt")
@@ -116,6 +119,14 @@ class RecognizerEngine:
         with self._lock:
             for language in languages:
                 self._recognizer(language)
+
+    def close(self) -> None:
+        # The no-profile SenseVoice startup path owns native sessions too.
+        # Wait for any current CPU call before releasing them, just like the
+        # backend.json adapter, and prohibit loading again after shutdown.
+        with self._lock:
+            self._closed = True
+            self._recognizers.clear()
 
     def recognize(self, samples: np.ndarray, language: str) -> str:
         return self.recognize_detailed(samples, language).text

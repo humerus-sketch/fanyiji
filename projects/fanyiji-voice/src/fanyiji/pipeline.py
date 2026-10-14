@@ -350,9 +350,14 @@ class SubtitlePipeline:
                     if run.config.translation_provider in _WEB_TRANSLATION_NAMES else "正在听 · 完全本地"))
         except Exception as exc:
             LOGGER.error("Model initialization failed: %s: %s", type(exc).__name__, str(exc))
-            if not models_loaded:
-                self._emit(run, "models_failed")
-            self._emit(run, "error", text=str(exc))
+            try:
+                if not models_loaded:
+                    self._emit(run, "models_failed")
+                self._emit(run, "error", text=str(exc))
+            finally:
+                # Capture or a worker can fail after other workers have started.
+                # Retire only this generation, not a concurrently resumed run.
+                self._stop_run(run)
 
     def _prepare_audio_processor(self, run: _Run) -> dict:
         mode = run.config.audio_processing
@@ -1451,36 +1456,54 @@ class SubtitlePipeline:
 
     def stop(self) -> None:
         with self._lifecycle_lock:
-            run, self._run = self._run, None
-            if run is None:
-                return
+            run = self._run
+        if run is not None:
+            self._stop_run(run)
+
+    @staticmethod
+    def _release_resource(resource, operation: str, label: str) -> None:
+        action = getattr(resource, operation, None)
+        if callable(action):
+            try:
+                action()
+            except Exception as exc:
+                # An already-exited helper or failed device must not prevent
+                # the remaining capture/model resources from being released.
+                LOGGER.warning("Pipeline cleanup failed: resource=%s operation=%s error=%s",
+                               label, operation, type(exc).__name__)
+
+    def _stop_run(self, run: _Run) -> None:
+        with self._lifecycle_lock:
+            current = self._run is run
+            if current:
+                self._run = None
             run.cancel.set()
             pending = self._translation_window_request
             if pending is not None and pending[0] is run:
                 self._translation_window_request = None
+            owned = run.translators or ((run.translator,) if run.translator is not None else
+                                        tuple(self._translators) if current else ())
         run.asr_queue.close(discard=True)
         run.mt_queue.close(discard=True)
         run.draft_queue.close(discard=True)
         if _final_translation_provider(run.config) in ("codex", "domestic_cli", *_WEB_TRANSLATION_NAMES):
-            owned = run.translators or ((run.translator,) if run.translator is not None else self._translators)
             for translator in owned:
-                cancel = getattr(translator, "cancel_pending", None)
-                if cancel is not None:
-                    cancel()
+                self._release_resource(translator, "cancel_pending", "translation")
         with run.translation_lock:
             draft = run.draft_translator if run.draft_active else None
         if draft is not None:
-            cancel = getattr(draft, "cancel_pending", None)
-            if cancel is not None:
-                cancel()
+            self._release_resource(draft, "cancel_pending", "draft_translation")
         with run.capture_lock:
             if run.capture is not None:
-                run.capture.stop()
+                self._release_resource(run.capture, "stop", "capture")
         # Engines stay resident for resume/settings changes. Native inference is
         # allowed to finish; canceled sessions cannot publish its late results.
         for thread in run.threads:
             if thread is not threading.current_thread():
-                thread.join(timeout=0.5)
+                try:
+                    thread.join(timeout=0.5)
+                except RuntimeError as exc:
+                    LOGGER.warning("Pipeline worker join failed: error=%s", type(exc).__name__)
 
     def shutdown(self) -> None:
         """Permanently close resident resources; stop() remains resumable."""
@@ -1492,20 +1515,10 @@ class SubtitlePipeline:
         try:
             self.stop()
         finally:
-            try:
-                for translator in translators:
-                    close = getattr(translator, "close", None)
-                    if close is not None:
-                        close()
-            finally:
-                close_asr = getattr(self._recognizer, "close", None)
-                try:
-                    if close_asr is not None:
-                        close_asr()
-                finally:
-                    close_filter = getattr(self._speech_filter, "close", None)
-                    if close_filter is not None:
-                        close_filter()
-                    for processor in self._audio_processors.values():
-                        processor.close()
-                    self._audio_processors.clear()
+            for translator in translators:
+                self._release_resource(translator, "close", "translation")
+            self._release_resource(self._recognizer, "close", "recognition")
+            self._release_resource(self._speech_filter, "close", "speech_filter")
+            for processor in tuple(self._audio_processors.values()):
+                self._release_resource(processor, "close", "audio_processing")
+            self._audio_processors.clear()

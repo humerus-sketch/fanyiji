@@ -1041,6 +1041,14 @@ class DanmakuService(QObject):
         self._recovery_decision = None
         self._latest_reason = "failure_transferred"
         self._log("failure_transferred", queue_id=head["id"], part=head["part"], candidate_id=candidate["id"])
+        retire = getattr(self.browser, "retire_danmaku_submission", None)
+        if callable(retire):
+            try:
+                # Both durable stores have acknowledged this exact failed part.
+                # Retire its transport fence without authorizing a duplicate POST.
+                retire(head["room"], head["text"])
+            except Exception as error:
+                self._log("transport_retirement_error", queue_id=head["id"], error_type=type(error).__name__)
         # The AI task belongs to this immutable candidate, not the queue head
         # which may already have advanced to the next subtitle.
         if self.repair_enabled and self._ai_analyzer is not None and not self._ai_task and not self._ai_analyzer.busy:

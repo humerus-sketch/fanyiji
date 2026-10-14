@@ -60,6 +60,4 @@
 - **pythonnet / clr-loader / cffi / proxy-tools / bottle / typing-extensions / pycparser**：Python 与 .NET 互操作和 pywebview 依赖，发行包 `licenses` 保留各安装分发的许可文本。
 - **Microsoft WebView2 SDK / Evergreen Runtime**：[官方分发说明](https://learn.microsoft.com/microsoft-edge/webview2/concepts/distribution)。SDK loader 与 .NET assemblies 随 pywebview 提供；Evergreen 浏览器 Runtime 外部安装，使用 Microsoft 许可和更新机制，不把浏览器账号资料或 Runtime 安装目录复制到程序包。
 
-## Chrome 原生字幕模式
-
-Google Chrome 使用用户自行安装的官方浏览器，不随翻译姬分发。专用模式使用独立的外置资料目录；可选的现有 Chrome 接入仅做只读字幕采集，不复制个人登录资料。原生字幕与实时翻译由 Chrome 提供，字幕气泡的可访问结构不属于稳定对外 API；透明隐藏、恢复和持续读取的兼容性仍需实机验证。上述依赖许可不授予平台发送权限，也不表示已经验证真实弹幕投递或字幕准确率。
+Chrome 原生字幕功能属于另一个独立项目，不包含在本语音版中。上述依赖许可不授予平台发送权限，也不表示已经验证真实弹幕投递或字幕准确率。

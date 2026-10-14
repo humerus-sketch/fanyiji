@@ -1,16 +1,16 @@
 # 翻译姬
 
-## 当前发布：翻译姬·语音版 0.1.2
+## 当前发布：翻译姬·语音版 0.1.3
 
-- [Windows x64 完整程序包](https://github.com/humerus-sketch/fanyiji/releases/download/v0.1.2/FanyiJiVoice-v0.1.2-windows-x64.zip)：约 780 MiB，包含 CPU / NVIDIA GPU 运行库，无需安装 Python。
-- [独立语音版源码 ZIP](https://github.com/humerus-sketch/fanyiji/releases/download/v0.1.2/FanyiJiVoice-v0.1.2-source.zip)。
-- [Release 与更新说明](https://github.com/humerus-sketch/fanyiji/releases/tag/v0.1.2)。
+- [Windows x64 完整程序包](https://github.com/humerus-sketch/fanyiji/releases/download/v0.1.3/FanyiJiVoice-v0.1.3-windows-x64.zip)：包含 CPU / NVIDIA GPU 运行库，无需安装 Python。
+- [独立语音版源码 ZIP](https://github.com/humerus-sketch/fanyiji/releases/download/v0.1.3/FanyiJiVoice-v0.1.3-source.zip)。
+- [Release 与更新说明](https://github.com/humerus-sketch/fanyiji/releases/tag/v0.1.3)。
 - [语音版源码与完整使用说明](projects/fanyiji-voice/README.md)。
 
 完整解压程序包，双击 `翻译姬·语音版.exe`；保留 `_internal`、`runtime` 和其他随包文件，不能只复制 EXE。
 程序不包含模型、账号或个人配置。弹幕推送对普通用户开放，首次默认关闭；请自行登录直播账号，配置直播间后手动开启。首次使用在“模型管理”下载所需模型；离线翻译须选择“本地翻译”。
 
-0.1.2 取消弹幕推送的本机管理员限制，仍保留登录、发送间隔、内容处理、队列与投递核验。翻译模型下载继续支持已核验的官方国内源优先、备用源、断点续传、有界重试、完整性校验及具体错误提示。
+0.1.3 修复启动失败及任务清理时的资源释放，避免旧任务影响新任务；修复浏览器投递状态交接，避免已经结束的旧请求阻塞后续队列。保留 0.1.2 开放的弹幕推送权限、登录、发送间隔、内容处理与投递核验。翻译模型下载继续支持已核验的官方国内源优先、备用源、断点续传、有界重试、完整性校验及具体错误提示。
 手动下载完整 `.gguf` 后，在“模型管理”顶部点击“导入本地模型”，命名并导入；选择本地或混合翻译，再点击“使用选中模型”。GGUF 无需解压，导入需要目标磁盘额外保存一份模型。
 
 当前源码运行及打包入口为 `projects/fanyiji-voice`，使用 Python 3.12 和该项目自己的虚拟环境。语音版不再提供 Chrome 原生字幕模式。

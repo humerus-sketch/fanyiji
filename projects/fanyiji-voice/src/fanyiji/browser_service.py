@@ -59,6 +59,7 @@ class BrowserService(QObject):
                              "generation": 0, "browser_generation": 0}
         self.active_version = None
         self._pending_url = None
+        self._current_url = ""
         self._pending_language = "zh-CN"
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="browser-update-check")
         self._checking = False
@@ -77,6 +78,9 @@ class BrowserService(QObject):
         self.danmaku_snapshot = {}
         self._has_danmaku_preferences = False
         self._danmaku_requests = {}
+        self._danmaku_commands = {}
+        self._unknown_submissions = {}
+        self._retired_submissions = set()
         self.danmaku_status.connect(self._cache_danmaku_status)
         try:
             preferences = json.loads(self.preferences_path.read_text(encoding="utf-8"))
@@ -230,6 +234,8 @@ class BrowserService(QObject):
                              "generation": event["generation"], "browser_generation": self._generation}
         if set(event) == reference_keys:
             self._live_source.update(source_kind="video", source_url=video_url)
+        if event["state"] == "ready":
+            self._current_url = video_url if set(event) == reference_keys else room_url(room)
         self.live_source_changed.emit(dict(self._live_source))
 
     def _cache_danmaku_status(self, value):
@@ -259,15 +265,71 @@ class BrowserService(QObject):
             return False
         if not self.is_browser_ready or request_id in self._danmaku_requests:
             return False
+        if operation == "send" and ((room, text) in self._unknown_submissions
+                                     or (room, text) in self._retired_submissions):
+            # An unknown old payload may still appear later. Never POST it again
+            # merely because its failed FIFO slot was handed to rule management.
+            self.danmaku_result.emit({"kind": "danmaku_result", "request_id": request_id,
+                "operation": "send", "result": {"outcome": "not_sent", "error": "script_unavailable"}})
+            return True
+        if operation == "send" and any(key not in self._retired_submissions
+                and value["generation"] == self._generation for key, value in self._unknown_submissions.items()):
+            return False
         self._danmaku_requests[request_id] = operation
+        self._danmaku_commands[request_id] = {"operation": operation, "room": room, "text": text,
+                                               "generation": self._generation}
         if not self._send(command):
             self._danmaku_requests.pop(request_id, None)
+            self._danmaku_commands.pop(request_id, None)
             return False
         return True
+
+    def retire_danmaku_submission(self, room, text):
+        """After durable handoff, fence the old text and retire a tainted helper."""
+        key = (room, text)
+        record = self._unknown_submissions.get(key)
+        pending = next((value for value in self._danmaku_commands.values()
+                        if value["operation"] == "send" and (value["room"], value["text"]) == key), None)
+        if record is None and pending is None:
+            return False
+        self._retired_submissions.add(key)
+        generation = (pending or record)["generation"]
+        unsettled = pending is not None or record["unsettled"]
+        if (unsettled and generation == self._generation and not self._closed
+                and not self._stopping and self.process.state() != QProcess.ProcessState.NotRunning
+                and self._current_url):
+            # Reuse the existing profile and current owned page. .finished is
+            # the sole restart point, after the tainted old helper has exited.
+            self._pending_url = self._current_url
+            self.event.emit({"kind": "transport_recovering"})
+            self._begin_stop()
+        return True
+
+    def _observe_danmaku_submission(self, event, command):
+        if command is None:
+            return
+        key = (command["room"], command["text"])
+        result = event["result"]
+        if command["operation"] == "send" and result.get("outcome") == "result_unknown":
+            self._unknown_submissions[key] = {"generation": command["generation"],
+                "before": result.get("before_count"),
+                "unsettled": result.get("error") in {"script_timeout", "script_unavailable", "navigation_changed", "window_closed"}}
+        elif command["operation"] == "check":
+            record = self._unknown_submissions.get(key)
+            before, count = (record or {}).get("before"), result.get("occurrence_count")
+            if (record is not None and type(before) is int and type(count) is int and count > before
+                    and result.get("room_matches") is True and result.get("chat_ready") is True
+                    and result.get("present") is True and result.get("error") in {"none", "", None}):
+                self._unknown_submissions.pop(key, None)
+                self._retired_submissions.discard(key)
 
     def _lose_danmaku_requests(self):
         requests, self._danmaku_requests = self._danmaku_requests, {}
         for request_id, operation in requests.items():
+            command = self._danmaku_commands.pop(request_id, None)
+            if command is not None and operation == "send":
+                self._unknown_submissions[(command["room"], command["text"])] = {
+                    "generation": command["generation"], "before": None, "unsettled": True}
             self.danmaku_result.emit({"kind": "danmaku_result", "request_id": request_id,
                 "operation": operation, "result": {"outcome": "result_unknown", "error": "browser_closed"}})
 
@@ -316,6 +378,7 @@ class BrowserService(QObject):
             except ValueError:
                 url = room_url(url)
         self._pending_url = url
+        self._current_url = url
         self._pending_language = language
         # A close is asynchronous: retain the latest open request until the old
         # helper has actually exited, rather than navigating its dying window.
@@ -436,6 +499,8 @@ class BrowserService(QObject):
                         or not isinstance(event.get("result"), dict)):
                     continue
                 self._danmaku_requests.pop(request_id, None)
+                command = self._danmaku_commands.pop(request_id, None)
+                self._observe_danmaku_submission(event, command)
                 self.danmaku_result.emit(event)
                 continue
             if self._stopping and event["kind"] in ("ready", "version", "update_available"):

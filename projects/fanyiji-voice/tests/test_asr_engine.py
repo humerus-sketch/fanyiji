@@ -43,6 +43,24 @@ def test_production_sensevoice_default_uses_four_cpu_threads(tmp_path, monkeypat
     engine.close()
 
 
+def test_sensevoice_without_backend_profile_releases_sessions_on_close(tmp_path, monkeypatch):
+    import weakref
+    assets(tmp_path, "sense_voice")
+    stub(monkeypatch)
+    engine = legacy.RecognizerEngine(tmp_path)
+    engine.preload(("auto",))
+    native = weakref.ref(engine._recognizers["auto"])
+    assert native() is not None
+    engine.close()
+    engine.close()
+    assert engine._recognizers == {}
+    assert native() is None
+    with pytest.raises(RuntimeError, match="已关闭"):
+        engine.preload(("auto",))
+    with pytest.raises(RuntimeError, match="已关闭"):
+        engine.recognize(np.zeros(16000, np.float32), "auto")
+
+
 def assets(root, kind="whisper"):
     if kind == "sense_voice":
         files = ("model.int8.onnx", "tokens.txt")

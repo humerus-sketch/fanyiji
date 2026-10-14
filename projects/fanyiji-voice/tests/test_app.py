@@ -546,6 +546,21 @@ class AppLifecycleTests(unittest.TestCase):
         self.assertEqual(self.controller.executor.shutdown_arguments, (False, False))
         self.assertTrue(self.controller.closed)
 
+    def test_close_optional_service_failure_still_releases_capture_and_other_services(self):
+        self.controller.danmaku = Mock()
+        self.controller.danmaku.close.side_effect = OSError("fixture storage failed")
+        self.controller.browser_service = Mock()
+        self.controller.specialized = Mock()
+        self.controller.live_source_service.close = Mock()
+        self.controller.close()
+        self.controller.executor.drain()
+        self.controller.browser_service.close.assert_called_once()
+        self.controller.live_source_service.close.assert_called_once()
+        self.controller.specialized.cancel_comparison.assert_called_once()
+        self.controller.specialized.close.assert_called_once()
+        self.assertEqual(self.controller.pipeline.calls, [("shutdown",)])
+        self.assertEqual(self.controller.executor.shutdown_arguments, (False, False))
+
     def test_closed_controller_ignores_late_control_calls_and_events(self):
         self.controller.close()
         epoch = self.controller.epoch

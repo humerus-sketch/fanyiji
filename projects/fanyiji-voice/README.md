@@ -2,6 +2,14 @@
 
 独立语音字幕项目，没有 Chrome 原生字幕模式或切换按钮。
 
+## 下载
+
+- [Windows x64 完整程序包 0.1.3](https://github.com/humerus-sketch/fanyiji/releases/download/v0.1.3/FanyiJiVoice-v0.1.3-windows-x64.zip)：包含 CPU / NVIDIA GPU 运行库，无需安装 Python。
+- [独立语音版源码 ZIP](https://github.com/humerus-sketch/fanyiji/releases/download/v0.1.3/FanyiJiVoice-v0.1.3-source.zip)。请优先下载此附件；GitHub 自动生成的仓库源码包也包含拆分前目录。
+- [Release 与 SHA-256 校验文件](https://github.com/humerus-sketch/fanyiji/releases/tag/v0.1.3)。
+
+0.1.3 修复启动失败及旧任务清理时的资源释放、SenseVoice 会话释放和内置浏览器投递状态交接。更新程序不会携带或覆盖用户的模型、登录资料和词规则。
+
 ## 功能
 
 - 麦克风、电脑声音及指定内置浏览器声源采集，未开启的通道不显示。
