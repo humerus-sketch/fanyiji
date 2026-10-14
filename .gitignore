@@ -10,6 +10,8 @@ dist/
 /翻译姬/
 /翻译姬·语音版/
 /翻译姬·Chrome字幕版/
+# The Chrome project has its own independent Git repository.
+/projects/fanyiji-chrome/
 artifacts/
 data/
 *.log

@@ -14,7 +14,7 @@
 手动下载完整 `.gguf` 后，在“模型管理”顶部点击“导入本地模型”，命名并导入；选择本地或混合翻译，再点击“使用选中模型”。GGUF 无需解压，导入需要目标磁盘额外保存一份模型。
 
 当前源码运行及打包入口为 `projects/fanyiji-voice`，使用 Python 3.12 和该项目自己的虚拟环境。语音版不再提供 Chrome 原生字幕模式。
-Chrome 字幕版已在本地独立拆分，后续另行发布；两版独立保存设置、日志、队列和浏览器资料，模型权重保持外置。
+Chrome 字幕版在[独立仓库 fanyiji-chrome](https://github.com/humerus-sketch/fanyiji-chrome)发布，提供自己的[程序包与源码](https://github.com/humerus-sketch/fanyiji-chrome/releases/latest)；两版独立保存设置、日志、队列和浏览器资料，模型权重保持外置。
 
 ## 拆分前版本说明（v0.1.0）
 
