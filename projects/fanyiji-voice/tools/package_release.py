@@ -63,7 +63,7 @@ def main():
             archive.write(path, APP_NAME + "/" + path.relative_to(folder).as_posix())
     checked_archive(temporary)
     temporary.replace(program)
-    git_root = Path(subprocess.check_output(["git", "rev-parse", "--show-toplevel"], cwd=ROOT, text=True).strip()).resolve()
+    git_root = Path(subprocess.check_output(["git", "rev-parse", "--show-toplevel"], cwd=ROOT, text=True, encoding="utf-8").strip()).resolve()
     relative = ROOT.resolve().relative_to(git_root).as_posix()
     tree = "HEAD" if relative == "." else "HEAD:" + relative
     subprocess.run(["git", "archive", "--format=zip", "--prefix=fanyiji-voice/", tree, "--output", str(source)],
@@ -72,7 +72,7 @@ def main():
     (output / "FanyiJiVoice-SHA256SUMS.txt").write_text(
         "".join(item["sha256"] + "  " + item["filename"] + "\n" for item in results), encoding="utf-8")
     report = {"models_bundled": False, "private_data_bundled": False,
-              "source_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
+              "source_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, encoding="utf-8").strip(),
               "archives": results}
     (output / "FanyiJiVoice-release-manifest.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(json.dumps(report), flush=True)
