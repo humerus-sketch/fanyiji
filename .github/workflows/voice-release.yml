@@ -185,12 +185,18 @@ jobs:
 
           environment = os.environ.copy()
           environment['QT_QPA_PLATFORM'] = 'windows'
+          environment['QT_DEBUG_PLUGINS'] = '1'
+          environment['QT_LOGGING_RULES'] = 'qt.qpa.*=true'
           smoke_root = Path(tempfile.mkdtemp(prefix='fanyiji-ci-smoke-', dir=os.environ['RUNNER_TEMP']))
           environment['FANYIJI_VOICE_DATA'] = str(smoke_root / 'userdata')
           environment['FANYIJI_VOICE_MODELS'] = str(smoke_root / 'models')
           for language in ('zh-CN', 'ja', 'en'):
               run = subprocess.run([str(executable), '--smoke-test', '--smoke-language', language],
-                  cwd=folder, env=environment, capture_output=True, text=True, timeout=60, check=True)
+                  cwd=folder, env=environment, capture_output=True, text=True, encoding='utf-8',
+                  errors='replace', timeout=60, check=False)
+              print(json.dumps({'ui_language': language, 'returncode': run.returncode,
+                                'stdout': run.stdout[-12000:], 'stderr': run.stderr[-12000:]}), flush=True)
+              assert run.returncode == 0, 'native_windows_ui_smoke_failed'
               value = json.loads(run.stdout.strip().splitlines()[-1])
               assert value['ui_smoke'] == 'passed' and value['danmaku_available'] is True
               assert value['audio_capture'] is False and value['settings_written'] is False
@@ -207,6 +213,41 @@ jobs:
                             'offline_translation_helpers': 2, 'models_bundled': False}))
           '@ | python -
           if ($LASTEXITCODE -ne 0) { throw 'Frozen source or offline smoke verification failed.' }
+
+      - name: Diagnose a failed native UI smoke without relaxing the release check
+        if: failure()
+        run: |
+          @'
+          import json, os, subprocess, sys, tempfile
+          from pathlib import Path
+          project = Path('projects/fanyiji-voice').resolve()
+          executable = project / 'dist/翻译姬·语音版/翻译姬·语音版.exe'
+          if executable.exists():
+              root = Path(tempfile.mkdtemp(prefix='voice-failure-probe-', dir=os.environ['RUNNER_TEMP']))
+              for label, command, platform in (
+                  ('source_windows', [sys.executable, '-X', 'faulthandler', 'run.py', '--smoke-test'], 'windows'),
+                  ('frozen_windows', [str(executable), '--smoke-test'], 'windows'),
+                  ('frozen_offscreen', [str(executable), '--smoke-test'], 'offscreen')):
+                  environment = {**os.environ, 'QT_QPA_PLATFORM': platform, 'QT_DEBUG_PLUGINS': '1',
+                                 'QT_LOGGING_RULES': 'qt.qpa.*=true', 'PYTHONFAULTHANDLER': '1',
+                                 'FANYIJI_VOICE_DATA': str(root / label),
+                                 'FANYIJI_VOICE_MODELS': str(root / 'models')}
+                  try:
+                      value = subprocess.run(command, cwd=project, env=environment, capture_output=True,
+                                             text=True, encoding='utf-8', errors='replace', timeout=60)
+                      print(json.dumps({'probe': label, 'returncode': value.returncode,
+                                        'stdout': value.stdout[-18000:], 'stderr': value.stderr[-18000:]}), flush=True)
+                  except subprocess.TimeoutExpired:
+                      print(json.dumps({'probe': label, 'timeout': True}), flush=True)
+          '@ | python -
+          $since = (Get-Date).AddMinutes(-10)
+          $events = Get-WinEvent -FilterHashtable @{LogName='Application'; Id=1000,1001,1026; StartTime=$since} -ErrorAction SilentlyContinue
+          foreach ($event in $events) {
+            if ($event.Message -like '*翻译姬·语音版*') {
+              [xml]$xml = $event.ToXml()
+              [pscustomobject]@{EventId=$event.Id; Data=@($xml.Event.EventData.Data | ForEach-Object { [pscustomobject]@{Name=$_.Name; Value=$_.InnerText} })} | ConvertTo-Json -Depth 5 -Compress
+            }
+          }
 
       - name: Package canonical archives and verify source provenance
         working-directory: projects/fanyiji-voice
