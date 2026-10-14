@@ -1,0 +1,267 @@
+name: Build verified voice release into draft
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Exact already-tested voice source commit
+        required: true
+        type: string
+        default: 0832243e5de8d6bd1de938a27fd5ed0705371bc4
+      tag:
+        description: Existing draft release tag; this workflow never publishes
+        required: true
+        type: string
+        default: v0.1.3
+
+permissions:
+  contents: read
+
+concurrency:
+  group: voice-draft-v0.1.3
+  cancel-in-progress: false
+
+jobs:
+  verified-draft:
+    if: github.repository == 'humerus-sketch/fanyiji' && github.event.repository.private == false
+    runs-on: windows-2025
+    timeout-minutes: 35
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      SOURCE_REF: ${{ inputs.source_ref }}
+      RELEASE_TAG: ${{ inputs.tag }}
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      PIP_NO_CACHE_DIR: '1'
+      PYTHONUTF8: '1'
+
+    steps:
+      - name: Restrict inputs to the source already verified locally
+        run: |
+          if ($env:SOURCE_REF -cne '0832243e5de8d6bd1de938a27fd5ed0705371bc4') {
+            throw 'Only the locally tested source commit is authorized.'
+          }
+          if ($env:RELEASE_TAG -cne 'v0.1.3') {
+            throw 'Only the existing v0.1.3 draft release is authorized.'
+          }
+
+      - name: Checkout exact source without persisting credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_ref }}
+          persist-credentials: false
+          fetch-depth: 1
+          submodules: false
+
+      - name: Verify the existing draft before downloading dependencies
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $actual = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $actual -cne $env:SOURCE_REF) { throw 'Source checkout differs.' }
+          $releaseJson = gh api "repos/$env:GITHUB_REPOSITORY/releases/413106610"
+          if ($LASTEXITCODE -ne 0) { throw 'The existing draft could not be read.' }
+          $release = $releaseJson | ConvertFrom-Json
+          if (-not $release.draft -or $release.tag_name -cne $env:RELEASE_TAG -or
+              $release.target_commitish -cne $env:SOURCE_REF) {
+            throw 'Release must remain a draft targeting the exact verified source.'
+          }
+          $names = @('FanyiJiVoice-v0.1.3-windows-x64.zip', 'FanyiJiVoice-v0.1.3-source.zip',
+                     'FanyiJiVoice-SHA256SUMS.txt', 'FanyiJiVoice-release-manifest.json')
+          if (@($release.assets | Where-Object { $_.name -cin $names }).Count) {
+            throw 'Canonical assets already exist. This workflow never replaces or deletes assets.'
+          }
+
+      - name: Use the cached compatible Python 3.12 runtime
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12.10'
+          architecture: x64
+          # No Actions dependency cache is created.
+
+      - name: Install existing pinned dependencies
+        run: |
+          $constraints = Join-Path $env:RUNNER_TEMP 'voice-build-constraints.txt'
+          @'
+          pythonnet==3.2.1
+          clr-loader==0.3.1
+          cffi==2.1.1
+          proxy-tools==0.1.0
+          bottle==0.13.4
+          typing-extensions==4.16.0
+          pycparser==3.11
+          sherpa-onnx-core==1.13.8
+          setuptools==84.0.0
+          packaging==26.3
+          pyinstaller-hooks-contrib==2026.8
+          '@ | Set-Content -LiteralPath $constraints -Encoding utf8
+          python -m pip install --no-cache-dir --constraint $constraints setuptools==84.0.0
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned build backend installation failed.' }
+          python -m pip install --no-cache-dir --no-build-isolation --constraint $constraints --editable './projects/fanyiji-voice[dev]'
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned dependency installation failed.' }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { throw 'Installed dependency requirements conflict.' }
+
+      - name: Ensure WebView2 is available only on this disposable runner
+        timeout-minutes: 5
+        run: |
+          function Get-WebViewRuntime {
+            $keys = @(
+              'HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}',
+              'HKCU:\SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
+            )
+            foreach ($key in $keys) {
+              $version = (Get-ItemProperty -LiteralPath $key -Name pv -ErrorAction SilentlyContinue).pv
+              if ($version -and $version -ne '0.0.0.0') { return $version }
+            }
+            return $null
+          }
+          if (-not (Get-WebViewRuntime)) {
+            $installer = Join-Path $env:RUNNER_TEMP 'MicrosoftEdgeWebview2Setup.exe'
+            Invoke-WebRequest -Uri 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -OutFile $installer
+            $signature = Get-AuthenticodeSignature -LiteralPath $installer
+            if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notlike '*Microsoft Corporation*') {
+              throw 'WebView2 bootstrapper must have a valid Microsoft signature.'
+            }
+            $installed = Start-Process -FilePath $installer -ArgumentList '/silent', '/install' -WindowStyle Hidden -Wait -PassThru
+            if ($installed.ExitCode -ne 0) { throw 'WebView2 installation failed.' }
+          }
+          if (-not (Get-WebViewRuntime)) { throw 'WebView2 is not available for offline helper smoke tests.' }
+
+      - name: Run the complete voice test suite
+        timeout-minutes: 12
+        working-directory: projects/fanyiji-voice
+        run: |
+          python -m compileall -q src tools
+          if ($LASTEXITCODE -ne 0) { throw 'Source compilation failed.' }
+          python -m pytest -q -rs
+          if ($LASTEXITCODE -ne 0) { throw 'Voice test suite failed.' }
+
+      - name: Download and verify fixed official CPU and CUDA runtimes
+        working-directory: projects/fanyiji-voice
+        run: |
+          python tools/prepare_llama_runtime.py
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned runtime download or verification failed.' }
+
+      - name: Build complete Windows distribution without models
+        working-directory: projects/fanyiji-voice
+        run: |
+          python tools/build.py
+          if ($LASTEXITCODE -ne 0) { throw 'Portable build failed.' }
+
+      - name: Verify frozen source and isolated offline UI helpers
+        run: |
+          @'
+          import json, os, subprocess, tempfile, types
+          from pathlib import Path
+          from PyInstaller.archive.readers import CArchiveReader
+
+          project = Path('projects/fanyiji-voice').resolve()
+          folder = project / 'dist' / '翻译姬·语音版'
+          executable = folder / '翻译姬·语音版.exe'
+          archive = CArchiveReader(str(executable)).open_embedded_archive('PYZ.pyz')
+          modules = set(archive.toc)
+          required = {'fanyiji.app', 'fanyiji.ui', 'fanyiji.identity', 'fanyiji.paths',
+                      'fanyiji.migration', 'fanyiji.pipeline', 'fanyiji.asr_engine',
+                      'fanyiji.browser_helper', 'fanyiji.web_translation_helper'}
+          assert required.issubset(modules), required - modules
+          assert not any(name.startswith('fanyiji.chrome_') for name in modules)
+
+          def normalized(code):
+              return code.replace(co_filename='', co_firstlineno=0, co_linetable=b'',
+                  co_consts=tuple(normalized(value) if isinstance(value, types.CodeType)
+                                  else value for value in code.co_consts))
+
+          checked = []
+          for name in sorted(n for n in modules if n == 'fanyiji' or n.startswith('fanyiji.')):
+              source = (project / 'src/fanyiji/__init__.py' if name == 'fanyiji' else
+                        (project / 'src' / Path(*name.split('.'))).with_suffix('.py'))
+              expected = compile(source.read_text(encoding='utf-8-sig'), str(source), 'exec', dont_inherit=True)
+              assert normalized(archive.extract(name)) == normalized(expected), name
+              checked.append(name)
+
+          environment = os.environ.copy()
+          environment['QT_QPA_PLATFORM'] = 'windows'
+          smoke_root = Path(tempfile.mkdtemp(prefix='fanyiji-ci-smoke-', dir=os.environ['RUNNER_TEMP']))
+          environment['FANYIJI_VOICE_DATA'] = str(smoke_root / 'userdata')
+          environment['FANYIJI_VOICE_MODELS'] = str(smoke_root / 'models')
+          for language in ('zh-CN', 'ja', 'en'):
+              run = subprocess.run([str(executable), '--smoke-test', '--smoke-language', language],
+                  cwd=folder, env=environment, capture_output=True, text=True, timeout=60, check=True)
+              value = json.loads(run.stdout.strip().splitlines()[-1])
+              assert value['ui_smoke'] == 'passed' and value['danmaku_available'] is True
+              assert value['audio_capture'] is False and value['settings_written'] is False
+              assert not (smoke_root / 'userdata').exists()
+          for provider in ('google_web', 'youdao_web'):
+              profile = smoke_root / provider
+              run = subprocess.run([str(executable), '--web-translation-helper', '--provider', provider,
+                                    '--profile', str(profile), '--smoke-test'],
+                  cwd=folder, env=environment, capture_output=True, text=True, timeout=45, check=True)
+              events = [json.loads(line) for line in run.stdout.splitlines() if line.strip()]
+              smoke = next(value for value in events if value.get('kind') == 'smoke')
+              assert smoke['passed'] is True and smoke['external_network'] is False
+          print(json.dumps({'frozen_source_modules_verified': len(checked), 'ui_smokes': 3,
+                            'offline_translation_helpers': 2, 'models_bundled': False}))
+          '@ | python -
+          if ($LASTEXITCODE -ne 0) { throw 'Frozen source or offline smoke verification failed.' }
+
+      - name: Package canonical archives and verify source provenance
+        working-directory: projects/fanyiji-voice
+        run: |
+          python tools/package_release.py --output-dir dist/release-assets
+          if ($LASTEXITCODE -ne 0) { throw 'Archive CRC or exclusion verification failed.' }
+          $assets = Join-Path $PWD 'dist/release-assets'
+          $manifest = Get-Content -LiteralPath (Join-Path $assets 'FanyiJiVoice-release-manifest.json') -Raw | ConvertFrom-Json
+          if ($manifest.source_commit -cne $env:SOURCE_REF -or $manifest.models_bundled -or $manifest.private_data_bundled) {
+            throw 'Release source provenance or exclusion manifest differs.'
+          }
+          foreach ($entry in $manifest.archives) {
+            $path = Join-Path $assets $entry.filename
+            if ((Get-Item -LiteralPath $path).Length -ne $entry.size -or
+                (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() -cne $entry.sha256) {
+              throw 'Packaged archive differs from its manifest.'
+            }
+          }
+
+      - name: Upload four canonical assets without replacing or publishing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $releaseJson = gh api "repos/$env:GITHUB_REPOSITORY/releases/413106610"
+          if ($LASTEXITCODE -ne 0) { throw 'Draft release could not be read.' }
+          $release = $releaseJson | ConvertFrom-Json
+          if (-not $release.draft -or $release.target_commitish -cne $env:SOURCE_REF) {
+            throw 'The existing release is no longer the authorized draft.'
+          }
+          $directory = Join-Path $PWD 'projects/fanyiji-voice/dist/release-assets'
+          $names = @('FanyiJiVoice-v0.1.3-windows-x64.zip', 'FanyiJiVoice-v0.1.3-source.zip',
+                     'FanyiJiVoice-SHA256SUMS.txt', 'FanyiJiVoice-release-manifest.json')
+          if (@($release.assets | Where-Object { $_.name -cin $names }).Count) {
+            throw 'Canonical assets exist; no replacement or deletion is allowed.'
+          }
+          $paths = @($names | ForEach-Object { Join-Path $directory $_ })
+          # Deliberately omit --clobber; the draft stays private until manual review.
+          gh release upload $env:RELEASE_TAG @paths --repo $env:GITHUB_REPOSITORY
+          if ($LASTEXITCODE -ne 0) { throw 'Release asset upload failed.' }
+          $updatedJson = gh api "repos/$env:GITHUB_REPOSITORY/releases/413106610"
+          if ($LASTEXITCODE -ne 0) { throw 'Uploaded release could not be rechecked.' }
+          $updated = $updatedJson | ConvertFrom-Json
+          if (-not $updated.draft -or $updated.target_commitish -cne $env:SOURCE_REF) {
+            throw 'The release must remain an unpublished draft.'
+          }
+          foreach ($path in $paths) {
+            $file = Get-Item -LiteralPath $path
+            $asset = @($updated.assets | Where-Object { $_.name -ceq $file.Name })
+            $digest = 'sha256:' + (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($asset.Count -ne 1 -or $asset[0].state -ne 'uploaded' -or
+                $asset[0].size -ne $file.Length -or $asset[0].digest -cne $digest) {
+              throw ('Uploaded asset does not match: ' + $file.Name)
+            }
+          }
+          'Complete CPU / NVIDIA package and verified metadata uploaded to draft; no publication performed.' |
+            Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
+          Get-Content -LiteralPath (Join-Path $directory 'FanyiJiVoice-release-manifest.json') -Raw |
+            Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
